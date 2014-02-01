@@ -3,14 +3,15 @@
 #include <SoftwareSerial.h>
 #include "MomentaryButton.h"
 
-#define queryTrellisTime 15
+#define queryTime 15
 
 SoftwareSerial midiSerial(2, 3);
 
 unsigned long savedTime;
-int tempo = 50;
+unsigned long updateTime;
+int tempo = 10;
 unsigned long flashClock;
-int flashTime = 10;
+int flashTime = 50;
 int slotCount = 0;
 int slotCount2 = 0;
 int slotCount3 = 0;
@@ -31,6 +32,7 @@ int transTempoDivide = -1;
 int transGateDivide = -1;
 int transStep = 0;
 int transFlashDivide = 0;
+int avgVal;
 boolean pitchDoor = false;
 boolean transDoor = false;
 boolean assignDoor = false;
@@ -44,9 +46,11 @@ boolean transSwitch = false;
 boolean polySwitch = false;
 boolean susSwitch = false;
 boolean transStepDoor = false;
+boolean trellisUpdate = false;
 //int polyGateIndex = 0;
 
-
+const int readValLength = 10;
+int rootReadVals[readValLength] = {0,0,0,0,0,0,0,0,0,0};
 //byte trelMidiVal[32] = {32,33,34,36,38,40,42,44,46,68,70,72,74,76,78,60,82,83,84,86,38,40,42,44,46,68,70,72,74,76,78,60};
 int pad1[16] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
 int pad2[16] = {16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31};
@@ -124,6 +128,7 @@ void setup() {
   midiSerial.begin(31250);
   flashClock = millis();
   savedTime = millis();
+  updateTime = millis();
   // INT pin requires a pullup
   pinMode(INTPIN, INPUT);
   digitalWrite(INTPIN, HIGH);
@@ -151,17 +156,24 @@ void loop() {
   
   int displayTime = int(millis() - flashClock);
   
-  delay(15); // 30ms delay is required, dont remove me!   <----- SUBTRACT this from tempo subdivision
+  //delay(15); // 30ms delay is required, dont remove me!   <----- SUBTRACT this from tempo subdivision
+
+  if(millis() - updateTime > queryTime){
+    trellisUpdate = true;
+    updateTime = millis();
+  } else{
+    trellisUpdate = false;
+  }
 
   adjustClockRate(); 
   transposeRoot();
   oct = 0; //resets octave adjustment
-  determineButtonState(); //trellis query
+  if(trellisUpdate){determineButtonState();} //trellis query
   advanceClockAndGate();  
   openPitchGate();
   advanceTransposeGate();
   pitchAssign();
-  updateLEDs(); // trellis query
+  if(trellisUpdate){updateLEDs();} // trellis query
   //flashLEDs();
   if(displayTime > flashTime){
   for (uint8_t i=0 ; i<16 ; i++){
@@ -238,8 +250,22 @@ void adjustClockRate(){
 
 void transposeRoot(){
   transVal = analogRead(1);
-  transVal = transVal/16;  
+  analogReadAverage(transVal);
+  transVal = avgVal/16;
   root = transVal; ////link with transpose pot
+}
+
+void analogReadAverage(int _anVal){
+  for(int i = readValLength-1 ; i > 0 ; i--){
+    rootReadVals[i] = rootReadVals[i-1];
+  }
+  rootReadVals[0] = _anVal;
+
+  int sum;
+  for(int i = 0 ; i< readValLength; i++){
+    sum+=rootReadVals[i];
+  }
+  avgVal = sum/readValLength;
 }
 
 void determineButtonState(){
