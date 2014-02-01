@@ -3,6 +3,8 @@
 #include <SoftwareSerial.h>
 #include "MomentaryButton.h"
 
+#define queryTrellisTime 15
+
 SoftwareSerial midiSerial(2, 3);
 
 unsigned long savedTime;
@@ -154,69 +156,57 @@ void loop() {
   adjustClockRate(); 
   transposeRoot();
   oct = 0; //resets octave adjustment
-  determineButtonState();
+  determineButtonState(); //trellis query
   advanceClockAndGate();  
   openPitchGate();
   advanceTransposeGate();
   pitchAssign();
-  updateLEDs();
+  updateLEDs(); // trellis query
   //flashLEDs();
   if(displayTime > flashTime){
   for (uint8_t i=0 ; i<16 ; i++){
-
     if(!transSwitch){
       if(on1[i]){ // will turn back on or off at the display logic
-      trellis.setLED(i);
-     } else{
-      trellis.clrLED(i);
-     }
-     if(transFlashDivide%2==0){
-      if(on2[i]){ // will turn back on or off at the display logic
-      trellis.setLED(pad2[i]);
-     } else{
-      trellis.clrLED(pad2[i]);
-     }
-     }
+        trellis.setLED(i);
+      } else{
+        trellis.clrLED(i);
+      }
+      if(transFlashDivide%2==0){
+        if(on2[i]){ // will turn back on or off at the display logic
+          trellis.setLED(pad2[i]);
+        } else{
+          trellis.clrLED(pad2[i]);
+        }
+      }
     } else{
-     if(transOn1[i]){ // will turn back on or off at the display logic
-      trellis.setLED(i);
-     } else{
-      trellis.clrLED(i);
-     }
-     if(transFlashDivide%2==0){
-       if(transOn2[i]){
-        trellis.setLED(pad2[i]);
-       } else{
-        trellis.clrLED(pad2[i]); 
-       }
-       
-       if(transAssign[i]){
-        trellis.setLED(pad4[i]);
-       } else{
-        trellis.clrLED(pad4[i]); 
-       }
-     }
-   }
- }
- transFlashDivide++;
-  flashClock = millis();
-  }
-  trellis.writeDisplay();
+      if(transOn1[i]){ // will turn back on or off at the display logic
+        trellis.setLED(i);
+      } else{
+        trellis.clrLED(i);
+      }
+      if(transFlashDivide%2==0){
+        if(transOn2[i]){
+          trellis.setLED(pad2[i]);
+        } else{
+          trellis.clrLED(pad2[i]); 
+        }
 
-  ///////////ROTATE///////////
-  rotateAssignments();
-
-  //////////MIDI SEND//////////
- 
-  if(midiTrigger){
-    for (uint8_t i=0 ; i<16 ; i++){
-      if(on4[i] && tempoGrid3[i]){
-        noteOn(0x90, chamber[i], 0x4F);
-        noteOffVar = chamber[i];
+        if(transAssign[i]){
+          trellis.setLED(pad4[i]);
+        } else{
+          trellis.clrLED(pad4[i]); 
+        }
       }
     }
-    midiTrigger = false;
   }
+  transFlashDivide++;
+  flashClock = millis();
+}
+
+trellis.writeDisplay();
+
+  rotateAssignments();
+  midiSend();
 }
 
 void checkSwitches(){
@@ -680,6 +670,18 @@ void rotateAssignments(){
     }else if(rotateFlag){
       chamber[i]= bucket[rotateGrid[rotCount][i]];
     }
+  }
+}
+
+void midiSend(){
+    if(midiTrigger){
+    for (uint8_t i=0 ; i<16 ; i++){
+      if(on4[i] && tempoGrid3[i]){
+        noteOn(0x90, chamber[i], 0x4F);
+        noteOffVar = chamber[i];
+      }
+    }
+    midiTrigger = false;
   }
 }
   
