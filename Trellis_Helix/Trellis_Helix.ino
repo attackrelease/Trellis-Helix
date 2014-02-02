@@ -3,6 +3,7 @@
 #include <SoftwareSerial.h>
 #include "MomentaryButton.h"
 
+//#define TEENSY  // uncomment if you want to use a teensy as a USB MIDI device
 #define queryTime 15
 
 SoftwareSerial midiSerial(2, 3);
@@ -712,12 +713,22 @@ void midiSend(){
 }
   
 void noteOn(byte cmd, byte data1, byte  data2) {
+  
+#ifdef TEENSY
+  usbMidi.sendNoteOn(data1,data2,cmd);
+#endif
+  
  midiSerial.write(cmd);
  midiSerial.write(data1);
  midiSerial.write(data2);
 }
 
 void noteOff(byte cmd, byte data1, byte  data2) {
+
+#ifdef TEENSY
+  usbMidi.sendNoteOff(data1,data2,cmd);
+#endif
+
  midiSerial.write(cmd);
  midiSerial.write(data1);
  midiSerial.write(data2);    
